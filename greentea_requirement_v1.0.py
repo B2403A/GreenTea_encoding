@@ -2,129 +2,105 @@
 # -*- coding: utf-8 -*-
 
 """
-GreenTea 环境一键安装脚本
---------------------------------
-功能：
-1. 自动创建所有需要的目录
-2. 自动检查 ffmpeg / mkvmerge 是否安装
-3. 自动安装 Python requirements.txt
-4. Windows / Mac / Linux 全平台兼容
+GreenTea Requirement Installer
+自动安装 Python 依赖 + 检查外部工具环境
 """
 
 import os
 import subprocess
-from pathlib import Path
 import sys
-import shutil
+from pathlib import Path
 
-# 所需目录
-DIRS = [
-    "ass",
-    "backup",
-    "chapters",
-    "fonts",
-    "fonts_sub",
-    "input",
-    "out",
-    "raw",
-    "work"
+REQUIRED_PY_LIBS = [
+    "fonttools>=4.47.0",
+    "lxml>=4.9.2"
 ]
 
-REQUIREMENTS_FILE = "requirements.txt"
+REQUIRED_TOOLS = {
+    "ffmpeg": "视频压制 用于 hardsub / softsub",
+    "mkvmerge": "MKVToolNix 视频封装、章节写入、附件封装",
+    "pyftsubset": "字体子集化工具（fonttools 自带）"
+}
+
+PROJECT_DIRS = [
+    "raw", "ass", "fonts",
+    "fonts_sub", "chapters",
+    "input", "out", "backup", "work"
+]
 
 
-def print_header():
-    print("=" * 60)
-    print("       GreenTea 自动压制脚本环境安装器")
-    print("=" * 60)
-
+# --------- Utility functions ---------
 
 def run(cmd):
-    """执行命令并实时输出"""
     print("[CMD]", " ".join(cmd))
+    return subprocess.run(cmd, shell=False)
+
+
+def pip_install(package: str):
+    print(f"\n 正在安装 Python 依赖: {package}")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+
+
+def check_tool(tool: str) -> bool:
     try:
-        subprocess.run(cmd, check=True)
-    except Exception as e:
-        print(f"[ERROR] 执行命令失败: {e}")
-        sys.exit(1)
+        subprocess.run([tool, "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return True
+    except Exception:
+        return False
 
 
-def check_program_exists(name):
-    """检查命令是否存在于系统环境变量路径中"""
-    return shutil.which(name) is not None
-
-
-def create_directories():
-    print("\n→ 创建目录...")
-    for d in DIRS:
-        Path(d).mkdir(exist_ok=True)
-        print(f"[OK] {d}/")
-    print("[DONE] 所有目录已准备完成\n")
-
-
-def install_python_requirements():
-    if not Path(REQUIREMENTS_FILE).exists():
-        print(f"[WARN] 未找到 {REQUIREMENTS_FILE}，跳过 Python 依赖安装")
-        return
-
-    print("→ 安装 Python 依赖...")
-    cmd = [sys.executable, "-m", "pip", "install", "-r", REQUIREMENTS_FILE]
-    run(cmd)
-    print("[DONE] Python 依赖安装完成\n")
-
-
-def check_ffmpeg_mkvmerge():
-    print("→ 检查系统依赖（ffmpeg / mkvmerge）...")
-
-    missing = []
-
-    if check_program_exists("ffmpeg"):
-        print("[OK] ffmpeg 已安装")
-    else:
-        print("[ERROR] 未找到 ffmpeg")
-        missing.append("ffmpeg")
-
-    if check_program_exists("mkvmerge"):
-        print("[OK] mkvmerge 已安装")
-    else:
-        print("[ERROR] 未找到 mkvmerge")
-        missing.append("mkvmerge")
-
-    if missing:
-        print("\n❗ 以下必要组件未安装：")
-        for m in missing:
-            print("   -", m)
-
-        print("\n请按系统安装方法：")
-
-        print("\nWindows：")
-        print("  ffmpeg   下载：https://www.gyan.dev/ffmpeg/builds/")
-        print("  mkvmerge 下载：https://mkvtoolnix.download/")
-
-        print("\nmacOS (Homebrew)：")
-        print("  brew install ffmpeg mkvtoolnix")
-
-        print("\nUbuntu / Debian：")
-        print("  sudo apt install ffmpeg mkvtoolnix")
-
-        print("\n安装完成后再重新运行 install_environment.py")
-        sys.exit(1)
-
-    print("[DONE] 系统依赖检查完成\n")
-
+# --------- Main Logic ---------
 
 def main():
-    print_header()
+    print("========================================")
+    print("  GreenTea 自动环境安装脚本")
+    print("========================================")
 
-    create_directories()
-    check_ffmpeg_mkvmerge()
-    install_python_requirements()
+    # 1. 生成 requirements.txt
+    print("\n 正在生成 requirements.txt ...")
+    req_path = Path("requirements.txt")
+    with req_path.open("w", encoding="utf-8") as f:
+        for lib in REQUIRED_PY_LIBS:
+            f.write(lib + "\n")
+    print("✔ requirements.txt 已生成\n")
 
-    print("=" * 60)
-    print(" 🎉 环境安装已全部完成！")
-    print(" 请将 raw/ 放入视频，ass/ 放字幕，fonts/ 放字体即可开始压制")
-    print(" 稍后运行 launch.py 开始全自动压制")
-    print("=" * 60)
+    # 2. 自动创建目录
+    print(" 正在创建项目目录结构 ...")
+    for d in PROJECT_DIRS:
+        Path(d).mkdir(exist_ok=True)
+        print(f" - {d}/")
+    print("✔ 所有目录已准备好。\n")
+
+    # 3. 安装 Python 库
+    print(" 正在安装 Python 依赖库 ...")
+    for lib in REQUIRED_PY_LIBS:
+        pip_install(lib)
+
+    print("\n Python 库安装完成。\n")
+
+    # 4. 检查外部工具
+    print(" 正在检查外部工具环境 ...\n")
+    missing = []
+    for tool, desc in REQUIRED_TOOLS.items():
+        ok = check_tool(tool)
+        if ok:
+            print(f"   {tool} 已安装 ({desc})")
+        else:
+            print(f"   {tool} 未找到！ ({desc})")
+            missing.append(tool)
+
+    if missing:
+        print("\n⚠ 以下外部工具缺失，请用户手动安装：\n")
+        for t in missing:
+            print(f" - {t}")
+        print("\n安装指南：")
+        print("  ffmpeg: https://ffmpeg.org/download.html")
+        print("  mkvmerge(MKVToolNix): https://mkvtoolnix.download/")
+        print("  pyftsubset 随 fonttools 自动安装，无需额外安装\n")
+
+    print("\n========================================")
+    print("   GreenTea 环境安装完成！")
+    print("========================================\n")
 
 
 if __name__ == "__main__":
