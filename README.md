@@ -7,6 +7,25 @@
 
 *不要用这个脚本通过绿茶的测试，你会后悔的*
 
+脚本职能：
+- **greentea_auto.py 软压制作**
+- **hardsub.py 硬压制作**
+- **章节 XML ffmeta自动生成（autochapter.py）**
+- **附件封装管理，用于更改封装文件（replace_attachment.py）**
+- **总控一键启动脚本（launch.py）**
+
+
+所有目录均可由环境安装脚本自动生成。
+
+---
+
+# 🛠 环境安装
+
+运行一键安装脚本：
+****
+bash
+python3 greentea_requirement_v1.0.py
+****
 
 使用方法：
 
